@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 # MIT License
 #
@@ -22,9 +22,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-# This script implements usage(), getVersion() & setVersion() for projects producing Docker images.
+# This script implements usage(), getVersion() & setVersion() for projects that use a plain-text VERSION file.
 
-usage_image() {
+usage_version() {
     cat<<EOF
 usage:
 if on $MASTER branch: release $PRE_USAGE|$RC_USAGE
@@ -41,50 +41,22 @@ TAG_SUFFIX                          suffix for tags, default ''
 BRANCH_PREFIX                       prefix for release branches, default 'v'
 BRANCH_SUFFIX                       suffix for release branches, default '' ('.x' is common)
 NO_GIT_DISCOVERY_ACROSS_FILESYSTEM  whether to not set GIT_DISCOVERY_ACROSS_FILESYSTEMS, default ''
-VERSION_FILE                        name of file containing version, default 'Dockerfile'
-VERSION_LABEL                       name of LABEL entry containing version, default 'version'
+VERSION_FILE                        name of VERSION file, default 'VERSION'
 EOF
 }
 
-DOCKER_FILE="${DOCKER_FILE:-Dockerfile}"
-echo "INFO: using version file: $DOCKER_FILE"
-VERSION_LABEL="${VERSION_LABEL:-version}"
-echo "INFO: using version label: $VERSION_LABEL"
+VERSION_FILE="${VERSION_FILE:-VERSION}"
+echo "INFO: using version file: $VERSION_FILE"
 
-VERSION_LABEL_LINES="$(egrep '^LABEL' "$DOCKER_FILE" | egrep -o "$VERSION_LABEL=\"?[0-9]+\.[0-9]+\.[0-9]+(-[^ \"]*)?\"?")"
-if [ $(echo "$VERSION_LABEL_LINES" | wc -l) != 1 ]; then
-  echo "ERROR: ambiguous or missing LABEL line with $VERSION_LABEL=<semver> entry" >&2
-  exit 10
-fi
-
-getVersion_image() {
-  echo $(egrep '^LABEL' "$DOCKER_FILE" | egrep -o "$VERSION_LABEL=\"?[0-9]+\.[0-9]+\.[0-9]+(-[^ \"]*)?\"?" | cut -d'=' -f2 | sed 's/"//g')
+getVersion_version() {
+  cat "$VERSION_FILE"
 }
 
 # usage: setVersion version
-setVersion_image() {
+setVersion_version() {
   V=$1
-
-  first=true
-  printf "$(cat "$DOCKER_FILE")\n" | while read line; do
-    label="$(echo "$line"  | egrep '^LABEL' | egrep "$VERSION_LABEL=\"?[0-9]+\.[0-9]+\.[0-9]+(-[^ \"]*)?\"?" || true)"
-    if [ -z "$label" ]; then # skip it
-      if [ $first = true ]; then
-        first=false
-        VERSION_FILE_CONTENT="$line"
-      else
-        VERSION_FILE_CONTENT="$VERSION_FILE_CONTENT\n$line"
-      fi
-    else # we found the LABEL line with the version=<semver> in it; replace & append to VERSION_FILE_CONTENT
-      line="$(echo "$label" | sed -E "s/$VERSION_LABEL=\"?[0-9]+\.[0-9]+\.[0-9]+(-[^ \"]*)?\"?/$VERSION_LABEL=$1/")"
-      VERSION_FILE_CONTENT="$VERSION_FILE_CONTENT\n$line"
-    fi
-    printf "$VERSION_FILE_CONTENT" > "$DOCKER_FILE"
-  done
-  VERSION_FILE_CONTENT="$(cat "$DOCKER_FILE")\n"
-  printf "$VERSION_FILE_CONTENT" > "$DOCKER_FILE"
-
-  echo "INFO: set $VERSION_LABEL attribute in $DOCKER_FILE to $V"
-  echo "$DOCKER_FILE is now:"
-  cat "$DOCKER_FILE"
+  echo "$V" > $VERSION_FILE
+  echo "INFO: set 'version' attribute in $VERSION_FILE to $V"
+  echo "$VERSION_FILE is now:"
+  cat "$VERSION_FILE"
 }

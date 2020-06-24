@@ -1,5 +1,7 @@
 FROM node:8-alpine
 
+LABEL version=0.1.0-pre.0
+
 RUN apk update && \
     apk upgrade && \
     apk add --no-cache \
