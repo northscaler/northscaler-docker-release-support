@@ -1,4 +1,4 @@
-FROM node:8-alpine
+FROM docker:19.03.8
 
 LABEL version=0.1.0-pre.2
 
